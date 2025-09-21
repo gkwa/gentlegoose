@@ -16,6 +16,7 @@ class FileHandler:
     def get_global_gitignore_path(self) -> pathlib.Path | None:
         """Get the path to the global gitignore file from git config."""
         try:
+            self.logger.debug("Running: git config --global core.excludesfile")
             result = subprocess.run(
                 ["git", "config", "--global", "core.excludesfile"],
                 capture_output=True,
@@ -25,14 +26,27 @@ class FileHandler:
             path_str = result.stdout.strip()
 
             if not path_str:
+                self.logger.debug(
+                    "Git config returned empty string for core.excludesfile"
+                )
                 return None
 
             # Expand user home directory if present
-            return pathlib.Path(path_str).expanduser()
+            expanded_path = pathlib.Path(path_str).expanduser()
+            self.logger.debug("Expanded git config path: %s", expanded_path)
 
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            self.logger.debug("No global gitignore configured or git not found")
+        except subprocess.CalledProcessError as e:
+            self.logger.debug(
+                "Git config command failed with exit code %d: %s",
+                e.returncode,
+                e.stderr.strip(),
+            )
             return None
+        except FileNotFoundError:
+            self.logger.debug("Git command not found in PATH")
+            return None
+        else:
+            return expanded_path
 
     @staticmethod
     def get_default_global_gitignore_path() -> pathlib.Path:

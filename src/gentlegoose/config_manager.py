@@ -75,20 +75,40 @@ class ConfigManager:
     def _get_global_gitignore_patterns(self) -> list[str]:
         """Get global gitignore patterns from git config or default location."""
         # Try git config first
+        self.logger.debug("Checking git config for global gitignore path")
         global_path = self.file_handler.get_global_gitignore_path()
 
-        if global_path and global_path.exists():
-            self.logger.info("Using global gitignore from git config: %s", global_path)
-            return self.file_handler.read_gitignore_patterns(global_path)
+        if global_path:
+            self.logger.debug("Git config returned path: %s", global_path)
+            if global_path.exists():
+                self.logger.info(
+                    "Using global gitignore from git config: %s", global_path
+                )
+                return self.file_handler.read_gitignore_patterns(global_path)
+            self.logger.debug(
+                "Global gitignore path from git config does not exist: %s",
+                global_path,
+            )
+        else:
+            self.logger.debug("No global gitignore path configured in git")
 
         # Fall back to default location
         default_path = self.file_handler.get_default_global_gitignore_path()
+        self.logger.debug("Checking default global gitignore path: %s", default_path)
 
         if default_path.exists():
             self.logger.info("Using default global gitignore: %s", default_path)
             return self.file_handler.read_gitignore_patterns(default_path)
+        self.logger.debug(
+            "Default global gitignore file does not exist: %s", default_path
+        )
 
-        self.logger.debug("No global gitignore file found")
+        self.logger.info("No global gitignore file found. Checked paths:")
+        if global_path:
+            self.logger.info("  Git config path: %s (not found)", global_path)
+        else:
+            self.logger.info("  Git config: no path configured")
+        self.logger.info("  Default path: %s (not found)", default_path)
         return []
 
     def _update_zed_settings(
