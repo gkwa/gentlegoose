@@ -5,7 +5,7 @@ description = "Sync global gitignore patterns into Zed editor project settings"
 readme = "README.md"
 authors = [{ name = "Taylor Monacelli", email = "taylormonacelli@gmail.com" }]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["dulwich"]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov"]

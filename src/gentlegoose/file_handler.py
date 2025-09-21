@@ -2,9 +2,17 @@ import json
 import logging
 import pathlib
 import shutil
-import subprocess
 import tempfile
 import typing
+
+try:
+    from dulwich.config import ConfigFile
+except ImportError:
+    # Fallback if dulwich is not available
+    ConfigFile = None
+
+# Constants
+CONFIG_KEY_VALUE_PARTS = 2
 
 
 class FileHandler:
@@ -15,38 +23,78 @@ class FileHandler:
 
     def get_global_gitignore_path(self) -> pathlib.Path | None:
         """Get the path to the global gitignore file from git config."""
-        try:
-            self.logger.debug("Running: git config --global core.excludesfile")
-            result = subprocess.run(
-                ["git", "config", "--global", "core.excludesfile"],
-                capture_output=True,
-                text=True,
-                check=True,
+        if ConfigFile is None:
+            self.logger.debug(
+                "Dulwich not available, falling back to manual config parsing"
             )
-            path_str = result.stdout.strip()
+            return self._get_global_gitignore_path_fallback()
 
-            if not path_str:
+        try:
+            self.logger.debug("Reading git global config for core.excludesfile")
+
+            # Try to read from global git config file
+            global_config_path = pathlib.Path.home() / ".gitconfig"
+            if global_config_path.exists():
+                with global_config_path.open("rb") as f:
+                    config = ConfigFile.from_file(f)
+
+                excludes_file = config.get((b"core",), b"excludesfile")
+                if excludes_file:
+                    path_str = excludes_file.decode("utf-8")
+                    self.logger.debug("Git config returned path: %s", path_str)
+
+                    # Expand user home directory if present
+                    expanded_path = pathlib.Path(path_str).expanduser()
+                    self.logger.debug("Expanded git config path: %s", expanded_path)
+                    return expanded_path
+                self.logger.debug("No core.excludesfile found in git config")
+            else:
                 self.logger.debug(
-                    "Git config returned empty string for core.excludesfile"
+                    "Global git config file does not exist: %s", global_config_path
+                )
+
+        except (OSError, UnicodeDecodeError, KeyError, AttributeError) as e:
+            self.logger.debug("Failed to read git config with dulwich: %s", e)
+            return self._get_global_gitignore_path_fallback()
+
+        return None
+
+    def _get_global_gitignore_path_fallback(self) -> pathlib.Path | None:
+        """Fallback method to parse git config manually."""
+        try:
+            self.logger.debug("Using fallback git config parsing")
+            global_config_path = pathlib.Path.home() / ".gitconfig"
+
+            if not global_config_path.exists():
+                self.logger.debug(
+                    "Global git config file does not exist: %s", global_config_path
                 )
                 return None
 
-            # Expand user home directory if present
-            expanded_path = pathlib.Path(path_str).expanduser()
-            self.logger.debug("Expanded git config path: %s", expanded_path)
+            content = global_config_path.read_text(encoding="utf-8")
 
-        except subprocess.CalledProcessError as e:
-            self.logger.debug(
-                "Git config command failed with exit code %d: %s",
-                e.returncode,
-                e.stderr.strip(),
-            )
-            return None
-        except FileNotFoundError:
-            self.logger.debug("Git command not found in PATH")
-            return None
-        else:
-            return expanded_path
+            # Simple parser for core.excludesfile
+            for original_line in content.splitlines():
+                stripped_line = original_line.strip()
+                if stripped_line.startswith("excludesfile"):
+                    # Handle both quoted and unquoted values
+                    parts = stripped_line.split("=", 1)
+                    if len(parts) == CONFIG_KEY_VALUE_PARTS:
+                        path_str = parts[1].strip().strip('"').strip("'")
+                        if path_str:
+                            self.logger.debug("Git config returned path: %s", path_str)
+                            expanded_path = pathlib.Path(path_str).expanduser()
+                            self.logger.debug(
+                                "Expanded git config path: %s", expanded_path
+                            )
+                            return expanded_path
+
+            self.logger.debug("No core.excludesfile found in git config")
+
+        except (OSError, UnicodeDecodeError) as e:
+            self.logger.debug("Failed to read git config: %s", e)
+
+        return None
 
     @staticmethod
     def get_default_global_gitignore_path() -> pathlib.Path:
