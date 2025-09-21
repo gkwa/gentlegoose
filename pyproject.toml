@@ -1,0 +1,94 @@
+[project]
+name = "gentlegoose"
+version = "0.1.0"
+description = "Sync global gitignore patterns into Zed editor project settings"
+readme = "README.md"
+authors = [{ name = "Taylor Monacelli", email = "taylormonacelli@gmail.com" }]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+[project.scripts]
+gentlegoose = "gentlegoose:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+preview = true
+
+[tool.ruff.lint]
+select = [
+  "F",
+  "E",
+  "W",
+  "C90",
+  "I",
+  "N",
+  "UP",
+  "YTT",
+  "ASYNC",
+  "ASYNC1",
+  "FBT",
+  "B",
+  "A",
+  "C4",
+  "DTZ",
+  "T10",
+  "DJ",
+  "EM",
+  "EXE",
+  "FA",
+  "ISC",
+  "ICN",
+  "LOG",
+  "G",
+  "INP",
+  "PIE",
+  "T20",
+  "PYI",
+  "PT",
+  "Q",
+  "RSE",
+  "RET",
+  "SLF",
+  "SLOT",
+  "SIM",
+  "TID",
+  "INT",
+  "ARG",
+  "PTH",
+  "TD",
+  "FIX",
+  "ERA",
+  "PD",
+  "PL",
+  "C",
+  "R",
+  "TRY",
+  "FLY",
+  "NPY",
+  "AIR",
+  "RUF",
+]
+extend-select = ["I"]
+extend-safe-fixes = ["F401", "F841"]
+
+# Disable specific rules for tests
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "PLR6301", "SLF001"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["--strict-markers", "--strict-config", "-ra"]
+pythonpath = ["src"]
