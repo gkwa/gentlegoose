@@ -1,0 +1,13 @@
+services:
+  gentlegoose-test:
+    build: .
+    volumes:
+      - .:/app:ro # Mount source code as read-only
+      - test-projects:/home/testuser/projects # Volume for test projects
+    command: bash
+    working_dir: /home/testuser
+    stdin_open: true
+    tty: true
+
+volumes:
+  test-projects:
